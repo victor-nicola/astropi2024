@@ -14,7 +14,7 @@ block_size_cloud_detection = 128 #20
 area_cloud_detection = block_size_cloud_detection ** 2
 
 block_size_cloud_detection_second = 128 #128
-interpolation_cloud_detection = 32
+interpolation_cloud_detection = 32 #32
 mini_block_size_cloud_detection = 16
 interpolation_cloud_detection_mini = 8
 
@@ -28,7 +28,7 @@ def valid(l, c, nl, nc):
         return True
     return False
 
-def bfs(img, isCloud, l, c, nl, nc, threshold, flag):
+def bfs(img, isCloud, l, c, nl, nc, threshold, flag, empty):
     q = [(l, c)]
     area = 1
     isCloud[l][c] = flag
@@ -41,7 +41,7 @@ def bfs(img, isCloud, l, c, nl, nc, threshold, flag):
         for d in range(0, len(dir_l)):
             next_l = l + dir_l[d]
             next_c = c + dir_c[d]
-            if valid(next_l, next_c, nl, nc) and isCloud[next_l][next_c] == 0 and img[next_l][next_c] >= threshold:
+            if valid(next_l, next_c, nl, nc) and isCloud[next_l][next_c] == empty and img[next_l][next_c] >= threshold:
                 q.append((next_l, next_c))
                 isCloud[next_l][next_c] = flag
                 
@@ -57,14 +57,14 @@ def bfs(img, isCloud, l, c, nl, nc, threshold, flag):
 def get_clouds(img):
     found = []
     img = cv2.resize(img, (width_cloud_detection, height_cloud_detection))
+    img_np = np.array(img)
     for l in range(0, height_cloud_detection, block_size_cloud_detection):
         for c in range(0, width_cloud_detection, block_size_cloud_detection):
             nl = min(height_cloud_detection, l + block_size_cloud_detection)
             nc = min(width_cloud_detection, c + block_size_cloud_detection)
             
             #create submatrix
-            sub_matrix = np.array(img)
-            sub_matrix = sub_matrix[l:nl, c:nc]
+            sub_matrix = img_np[l:nl, c:nc]
             nl -= l
             nc -= c
             isCloud = [[False for i in range(0, nc)] for i in range(0, nl)]
@@ -78,7 +78,7 @@ def get_clouds(img):
                         white += 1
                         if isCloud[i][j] == False:
                             no_clouds += 1
-                            bfs(sub_matrix, isCloud, i, j, nl, nc, lower_white_cloud_detection, True)
+                            bfs(sub_matrix, isCloud, i, j, nl, nc, lower_white_cloud_detection, True, False)
             
             if no_clouds >= 1:
                 cloud_type = 2
@@ -95,7 +95,7 @@ def get_clouds(img):
                 if cloud_type == 0:
                     found.append((c, l, nc, nl))
     
-    clouds = [[0 for i in range(0, width_cloud_detection)] for i in range(0, height_cloud_detection)]
+    clouds = np.zeros((height_cloud_detection, width_cloud_detection), dtype = int)
     boxes = []
     removed = []
     flag = 0
@@ -104,7 +104,7 @@ def get_clouds(img):
             for j in range(0, nc):                
                 if img[l + i, c + j] >= lower_white_cloud_detection and clouds[l + i][c + j] == 0:
                     flag += 1
-                    upper_left_corner, lower_right_corner, area = bfs(img, clouds, l + i, c + j, height_cloud_detection, width_cloud_detection, lower_white_cloud_detection, flag)
+                    upper_left_corner, lower_right_corner, area = bfs(img_np, clouds, l + i, c + j, height_cloud_detection, width_cloud_detection, lower_white_cloud_detection, flag, 0)
                     if area < area_cloud_detection * 2:
                         removed.append((upper_left_corner[1], upper_left_corner[0], lower_right_corner[1] - upper_left_corner[1], lower_right_corner[0] - upper_left_corner[0], flag))
                     else:
@@ -116,26 +116,22 @@ def get_clouds(img):
                 if clouds[l + i][c + j] == flag:
                     clouds[l + i][c + j] = 0
     
-    #log_file = open('logs.txt', 'w+')
     ans = clouds
-    print('da')
     for l in range(0, height_cloud_detection - block_size_cloud_detection_second, interpolation_cloud_detection):
         for c in range(0, width_cloud_detection - block_size_cloud_detection_second, interpolation_cloud_detection):
             counter = 0
-            #log_file.write(str(l) + ' ' + str(c) + '\n')
             for i in range(0, block_size_cloud_detection_second, interpolation_cloud_detection_mini):
                 for j in range(0, block_size_cloud_detection_second, interpolation_cloud_detection_mini):
-                    #log_file.write('\t' + str(i) + ' ' + str(j) + ' ' + str(ratio) + '\n')
                     white = 0
                     area = 0
                     for k in range(0, mini_block_size_cloud_detection):
                         for x in range(0, mini_block_size_cloud_detection):
                             if i + k < height_cloud_detection and j + x < width_cloud_detection:
                                 area += 1
-                                if clouds[l + i + k][c + j + x] != 0:
+                                if ans[l + i + k][c + j + x] != 0: #clouds
                                     white += 1
                     ratio = white / area
-                    if 0.4 <= ratio and ratio <= 0.7:
+                    if 0.30 <= ratio and ratio <= 0.7:
                         counter += 1
             if counter > ((block_size_cloud_detection_second / mini_block_size_cloud_detection) ** 2) * 0.6:
                 for i in range(0, block_size_cloud_detection_second):
@@ -148,15 +144,14 @@ def get_clouds(img):
                 ans[l][c] = 1
     
     # facem curat
-    print('facem curat')
     removed = []
-    isCloud = [[0 for i in range(0, width_cloud_detection)] for i in range(0, height_cloud_detection)]
+    isCloud = np.zeros((height_cloud_detection, width_cloud_detection), dtype = int)
     no_clouds = 0
     for l in range(0, height_cloud_detection):
         for c in range(0, width_cloud_detection):
             if isCloud[l][c] == 0 and ans[l][c] == 1:
                 no_clouds += 1
-                c1, c2, area = bfs(ans, isCloud, i, j, nl, nc, 1, no_clouds)
+                c1, c2, area = bfs(ans, isCloud, l, c, height_cloud_detection, width_cloud_detection, 1, no_clouds, 0)
                 if area < area_cloud_detection * 2:
                     removed.append(no_clouds)
     
@@ -170,13 +165,10 @@ def get_clouds(img):
     
     return ans
 
-img = cv2.imread("positives/frame01871_53238819088_o.jpg", 0)
+img = cv2.imread("positives/frame01840_53238890544_o.jpg", 0)
 
-#img = cv2.imread("positives/photo_0675.jpg", 0)
 clouds = get_clouds(img)
 
-#plt.subplot(1, 1, 1)
-#plt.imshow(clouds, cmap = 'gray')
-#plt.show()
-
-#cv2.imshow('pls', clouds)
+plt.subplot(1, 1, 1)
+plt.imshow(clouds, cmap = 'gray')
+plt.show()
