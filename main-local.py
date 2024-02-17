@@ -165,7 +165,8 @@ def distance_between_coords(lat1, long1, lat2, long2):
 def calculate_speed_from_coords(lat1, long1, lat2, long2, time_difference):
     return distance_between_coords(lat1, long1, lat2, long2) / time_difference
 
-avg_speed = avg_time = 0
+avg_speed = 0
+avg_time = 0
 
 folder_str = './pics-database/set9/'
 images = list(filter(lambda file: file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'), os.listdir(folder_str)))

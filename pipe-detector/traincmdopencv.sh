@@ -1,0 +1,1 @@
+opencv_traincascade -data experimental_model -vec output.vec -bg negatives.txt -numPos 176 -numNeg 88 -numStages 4 -acceptanceRatioBreakValue 0.000001 -w 20 -h 76 -precalcValBufSize 10000 -precalcIdxBufSize 10000 -numThreads 6

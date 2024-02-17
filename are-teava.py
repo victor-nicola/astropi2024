@@ -7,7 +7,7 @@ img_resized = cv2.resize(img, (507, 380))
 img_gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
 img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-stop_data = cv2.CascadeClassifier('./train-opencv-model/model/cascade.xml')
+stop_data = cv2.CascadeClassifier('./pipe-detector/experimental_model/cascade.xml')
    
 found = stop_data.detectMultiScale(img_gray, minSize = (20, 20))
 
