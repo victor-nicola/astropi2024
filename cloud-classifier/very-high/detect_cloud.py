@@ -5,15 +5,15 @@ import time
 
 # NU TE ATINGE DE NICIO MARIME SI NICIUN INTERPOLATION CA ALTFEL LITERALMENTE NU MAI MERGE NIMIC
 
-height_cloud_detection = 3040 #380
-width_cloud_detection = 4056 #507
-block_size_cloud_detection = 128 #20
+height_cloud_detection = 1520 #3040
+width_cloud_detection = 2028 #4056
+block_size_cloud_detection = 64 #128
 area_cloud_detection = block_size_cloud_detection ** 2
 
-block_size_cloud_detection_second = 128 #128
-interpolation_cloud_detection = 32 #32
-mini_block_size_cloud_detection = 16
-interpolation_cloud_detection_mini = 8
+block_size_cloud_detection_second = 64 #128
+interpolation_cloud_detection = 16 #32
+mini_block_size_cloud_detection = 8 #16
+interpolation_cloud_detection_mini = 4 #8
 smallest_area = (interpolation_cloud_detection_mini ** 2) * 4
 
 lower_white_cloud_detection = 190
@@ -95,8 +95,9 @@ def get_clouds(img):
                 for i in range(0, block_size_cloud_detection_second):
                     if c - 1 >= 0:
                         new_q.append((l + i, c - 1))
-                    for j in range(0, block_size_cloud_detection_second):
-                        clouds[l + i][c + j] = 0
+
+                    clouds[l + i][c:c + block_size_cloud_detection_second] = np.zeros(block_size_cloud_detection_second, dtype = int)
+                    
                     if c + block_size_cloud_detection_second < width_cloud_detection:
                         new_q.append((l + i, c + block_size_cloud_detection_second))
     #print('optimize: ' + str(time.time() - optimize))
@@ -124,6 +125,7 @@ img = cv2.imread("positives/frame01871_53238819088_o.jpg", 0)
 
 start = time.time()
 clouds = get_clouds(img)
+
 print(time.time() - start)
 
 plt.subplot(1, 1, 1)
