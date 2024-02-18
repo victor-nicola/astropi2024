@@ -54,13 +54,10 @@ def precalc_sequence(img, threshold):
     return precalc
 
 def get_clouds(img):
-    found = []
     img = cv2.resize(img, (width_cloud_detection, height_cloud_detection))
     img = np.array(img)
     
-    #first_filter = time.time()
     no_clouds = 0
-    removed = []
     clouds = np.zeros((height_cloud_detection, width_cloud_detection), dtype = int)
     for l in range(0, height_cloud_detection):
         for c in range(0, width_cloud_detection):
@@ -70,10 +67,6 @@ def get_clouds(img):
                 if area < area_cloud_detection * 2:
                     bfs(img, clouds, l, c, height_cloud_detection, width_cloud_detection, lower_white_cloud_detection, -1, no_clouds)
     
-    #print('first_filter: ' + str(time.time() - first_filter))
-
-    #fix aici ar merge optimizare cu precalculare
-    #optimize = time.time()
     precalc = precalc_sequence(clouds, 1)
     new_q = []
     for l in range(0, height_cloud_detection - block_size_cloud_detection_second, interpolation_cloud_detection):
@@ -100,26 +93,26 @@ def get_clouds(img):
                     
                     if c + block_size_cloud_detection_second < width_cloud_detection:
                         new_q.append((l + i, c + block_size_cloud_detection_second))
-    #print('optimize: ' + str(time.time() - optimize))
-    # facem curat
-    #clean = time.time()
-    isCloud = np.zeros((height_cloud_detection, width_cloud_detection), dtype = int)
+
+    cloud_type = np.zeros((height_cloud_detection, width_cloud_detection), dtype = int)
     no_clouds = 0
     for (l, c) in new_q:
-        if isCloud[l][c] == 0 and clouds[l][c] >= 1:
+        if cloud_type[l][c] == 0 and clouds[l][c] >= 1:
             no_clouds += 1
-            area = bfs(clouds, isCloud, l, c, height_cloud_detection, width_cloud_detection, 1, no_clouds, 0)
+            area = bfs(clouds, cloud_type, l, c, height_cloud_detection, width_cloud_detection, 1, no_clouds, 0)
             if area < area_cloud_detection * 2:
-                bfs(clouds, isCloud, l, c, height_cloud_detection, width_cloud_detection, 1, -1, no_clouds)
+                bfs(clouds, cloud_type, l, c, height_cloud_detection, width_cloud_detection, 1, -1, no_clouds)
     
-    #for l in range(0, height_cloud_detection):
-     #   for c in range(0, width_cloud_detection):
-      #      if isCloud[l][c] > 0:
-       #         isCloud[l][c] = 1
-        #    elif isCloud[l][c] < 0:
-         #       isCloud[l][c] = 0
+    for l in range(0, height_cloud_detection):
+        for c in range(0, width_cloud_detection):
+            if cloud_type[l][c] > 1:
+                cloud_type[l][c] = 1
+            if img[l][c] >= lower_white_cloud_detection and cloud_type[l][c] <= 0:
+                cloud_type[l][c] = 2
+            elif img[l][c] < lower_white_cloud_detection:
+                cloud_type[l][c] = 3
     
-    return isCloud
+    return cloud_type
 
 img = cv2.imread("positives/frame01871_53238819088_o.jpg", 0)
 
