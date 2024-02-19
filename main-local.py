@@ -31,6 +31,7 @@ block_width = 380
 
 img_width = 2028
 img_height = 1520
+center = (img_width / 2, img_height / 2)
 
 to_be_ignored = np.zeros((img_height, img_width), dtype = int)
 for l in range(block_y, block_height):
@@ -50,7 +51,7 @@ mini_block_size_cloud_detection = 8 #16
 interpolation_cloud_detection_mini = 4 #8
 smallest_area = (interpolation_cloud_detection_mini ** 2) * 4
 
-lower_white_cloud_detection = 160
+lower_white_cloud_detection = 190
 
 dir_l = [-1, 1,  0, 0]
 dir_c = [ 0, 0, -1, 1]
@@ -264,7 +265,7 @@ def calculate_mean_distance(coordinates_1, coordinates_2, time_diff, lat1, lat2)
         if distance / time_diff >= threshold_speed and not_to_ignore(coordinate) == True:
             alt1 = get_altitude_per_cloud_type(clouds_1[coordinate[0][1]][coordinate[0][0]], lat1)
             alt2 = get_altitude_per_cloud_type(clouds_2[coordinate[1][1]][coordinate[1][0]], lat2)
-            pairs.append((distance, (alt1 + alt2) / 2))
+            pairs.append((distance, (alt1 + alt2) / 2, coordinate[0], coordinate[1]))
     return pairs
 
 def get_earth_radius(latitude):
@@ -273,9 +274,10 @@ def get_earth_radius(latitude):
 def get_GSD(alt, earth_GSD):
     return (421 - alt) * earth_GSD / 421
 
-def calculate_speed_in_kmps(feature_distance, earth_GSD, time_difference, earth_radius, alt):
+def calculate_speed_in_kmps(feature_distance, earth_GSD, time_difference, earth_radius, alt, min_dist):
     GSD = get_GSD(alt, earth_GSD)
     distance = feature_distance * GSD / 100000
+    distance = distance / sqrt(1 - (distance ** 2) / ((421 - alt) ** 2 + min_dist ** 2))
     #distance = 2 * asin(distance / (2 * earth_radius)) * (earth_radius + 408) #423
     distance = 2 * asin(distance / (2 * (earth_radius + alt))) * (earth_radius + 421) #423
     #distance = distance * (earth_radius + 421) / (earth_radius + alt )
@@ -373,8 +375,9 @@ for i in range(1, len(images)):
     earth_radius = (earth_radius_1 + earth_radius_2) / 2
     
     speed_img = 0
-    for (distance, alt) in pairs:
-        speed_for_match = calculate_speed_in_kmps(distance, earth_GSD, time_difference, earth_radius, alt)
+    for (distance, alt, p1, p2) in pairs:
+        min_dist = min(math.hypot(p1[0] - center[0], p1[1] - center[1]), math.hypot(p2[0] - center[0], p2[1] - center[1]))
+        speed_for_match = calculate_speed_in_kmps(distance, earth_GSD, time_difference, earth_radius, alt, min_dist)
         speed_img += speed_for_match
     speed_img /= len(pairs)
     print(i - 1, i, speed_img, len(pairs))
